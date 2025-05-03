@@ -25,7 +25,7 @@ driver = webdriver.Chrome(service=service, options=options)
 # Open the pickleball booking page
 driver.get("https://my.campusrec.uci.edu/booking")
 
-wait = WebDriverWait(driver, 20)
+wait = WebDriverWait(driver, 10)
 
 # STEP 2: Click on the pickleball image
 wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "container-image-link-item"))).click()
@@ -68,14 +68,38 @@ print("✅ Duo approved and dashboard loaded")
 
 # Wait until correct date is selected (e.g., tomorrow or specific date)
 # Optional: Modify this to dynamically click the appropriate date tab
-time.sleep(20)
+time.sleep(1)
 wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "container-image-link-item"))).click()
-time.sleep(20)
+time.sleep(1)
+
+book_for_date = 5
+
+# date_buttons = driver.find_elements(By.CLASS_NAME, "d-flex justify-content-center buttons")
+date_buttons = driver.find_elements(By.CSS_SELECTOR, "div.d-flex.justify-content-center button.single-date-select-button")
+# if last element of date_buttons attribute value is < book_for_date then reload the page and get date_buttons again
+latest_date = int(date_buttons[-1].get_attribute("data-day"))
+while latest_date < book_for_date:
+    print(f"⚠️ Latest date {latest_date} is less than {book_for_date}. Reloading page...")
+    driver.refresh()
+    time.sleep(1)
+    date_buttons = driver.find_elements(By.CSS_SELECTOR, "div.d-flex.justify-content-center button.single-date-select-button")
+
+print(f"📅 Found {len(date_buttons)} date buttons.")
+# reverse for loop on date_buttons
+button = date_buttons[-1]
+button.get_attribute("data-day")
+print(f"📅 Clicking date button for {button.get_attribute('data-day')}")
+button.click()
+time.sleep(1)
 
 facility_buttons = driver.find_elements(By.CSS_SELECTOR, "#tabBookingFacilities button")
 print(f"🛠️ Found {len(facility_buttons)} facilities to check...")
 
-preferred_times = ["7 - 8 PM", "8 - 9 PM", "9 - 9:55 PM"]
+booked_slots_count = 0
+max_slots_to_book = 2
+booked_times = []  # Track which times have been booked
+
+preferred_times = ["5 - 6 PM", "6 - 7 PM", "7 - 8 PM", "8 - 9 PM", "9 - 9:55 PM"]
 
 for i in range(len(facility_buttons)):
     try:
@@ -85,7 +109,7 @@ for i in range(len(facility_buttons)):
         print(f"\n🔍 Checking facility {i+1}/{len(facility_buttons)}...")
 
         # Wait extra time for DOM + network latency
-        time.sleep(2.5)
+        time.sleep(1)
 
         # Ensure booking slots are loaded
         WebDriverWait(driver, 15).until(
@@ -99,13 +123,24 @@ for i in range(len(facility_buttons)):
             try:
                 time_label = slot.find_element(By.TAG_NAME, "p").text.strip()
                 print(f"🕒 Slot time: {time_label}")
-                if any(pref in time_label for pref in preferred_times):
+                if any(pref in time_label for pref in preferred_times) and time_label not in booked_times:
                     button = slot.find_element(By.CLASS_NAME, "booking-slot-action-item").find_element(By.TAG_NAME, "button")
                     if "disabled" not in button.get_attribute("class"):
                         print(f"🎯 Available slot for '{time_label}' — booking...")
                         button.click()
-                        print("✅ Slot booked. Exiting.")
-                        exit(0)
+                        booked_times.append(time_label)
+                        print(f"✅ Slot booked ({booked_slots_count + 1}/{max_slots_to_book}).")
+                        booked_slots_count += 1
+                        if booked_slots_count >= max_slots_to_book:
+                            print(f"🎉 Successfully booked {booked_slots_count} slots. Exiting.")
+                            exit(0)
+                        else:
+                            print(f"🔍 Continuing to search for {max_slots_to_book - booked_slots_count} more slots...")
+                            # Wait for page to update after booking
+                            continue  # Move to next slot
+                elif time_label in booked_times:
+                    print(f"⏭️ Skipping '{time_label}' - already booked a slot at this time.")
+
             except (StaleElementReferenceException, TimeoutException):
                 print("⚠️ Slot became stale or failed to load.")
                 continue
@@ -114,7 +149,11 @@ for i in range(len(facility_buttons)):
         print(f"⚠️ Error on facility tab {i+1}: {e}")
         continue
 
-print("\n❌ No available slots found in any facility.")
+# 3. Add this at the end of your script
+if booked_slots_count > 0:
+    print(f"✓ Booking completed with {booked_slots_count}/{max_slots_to_book} slots booked.")
+else:
+    print("\n❌ No available slots found in any facility.")
 
 # Optional: send email/notification on success or failure
 # Cleanup
