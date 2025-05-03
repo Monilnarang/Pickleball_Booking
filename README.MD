@@ -16,7 +16,7 @@ This bot automates court bookings on the [UCI Campus Recreation website](https:/
 
 ### 1. Clone and Prepare Environment
 
-Copy the `.env.example` to `.env` and update with your credentials:
+Create `.env` and update with your credentials:
 
 ```env
 UCI_ID=your_ucinetid
