@@ -72,7 +72,14 @@ time.sleep(1)
 wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "container-image-link-item"))).click()
 time.sleep(1)
 
-book_for_date = 5
+# Get today's date and add 2 days
+# book_for_date = 5
+from datetime import datetime, timedelta
+today = datetime.now()
+book_for_date = (today + timedelta(days=2)).day
+# book_for_date = 7
+print(f"📅 Booking for date: {book_for_date}")
+
 
 # date_buttons = driver.find_elements(By.CLASS_NAME, "d-flex justify-content-center buttons")
 date_buttons = driver.find_elements(By.CSS_SELECTOR, "div.d-flex.justify-content-center button.single-date-select-button")
@@ -83,6 +90,7 @@ while latest_date < book_for_date:
     driver.refresh()
     time.sleep(1)
     date_buttons = driver.find_elements(By.CSS_SELECTOR, "div.d-flex.justify-content-center button.single-date-select-button")
+    latest_date = int(date_buttons[-1].get_attribute("data-day"))
 
 print(f"📅 Found {len(date_buttons)} date buttons.")
 # reverse for loop on date_buttons
@@ -96,7 +104,7 @@ facility_buttons = driver.find_elements(By.CSS_SELECTOR, "#tabBookingFacilities 
 print(f"🛠️ Found {len(facility_buttons)} facilities to check...")
 
 booked_slots_count = 0
-max_slots_to_book = 2
+max_slots_to_book = 10
 booked_times = []  # Track which times have been booked
 
 preferred_times = ["5 - 6 PM", "6 - 7 PM", "7 - 8 PM", "8 - 9 PM", "9 - 9:55 PM"]
