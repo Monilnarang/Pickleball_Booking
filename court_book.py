@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -6,6 +8,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import StaleElementReferenceException, TimeoutException
 import time
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 import os
@@ -17,6 +22,14 @@ uci_password = os.getenv("UCI_PASSWORD")
 # Setup Chrome options
 options = webdriver.ChromeOptions()
 options.add_argument("--start-maximized")
+
+# # Setup Chrome options for headless environment
+# options = webdriver.ChromeOptions()
+# options.add_argument('--headless')
+# options.add_argument('--no-sandbox')
+# options.add_argument('--disable-dev-shm-usage')
+# options.add_argument('--disable-gpu')
+# options.add_argument('--window-size=1920,1080')
 
 # Use Service object
 service = Service(ChromeDriverManager().install())
@@ -166,3 +179,84 @@ else:
 # Optional: send email/notification on success or failure
 # Cleanup
 # driver.quit()
+
+
+def send_email(subject, message, recipients, only_to_you_on_failure=False):
+    """
+    Send email notification about booking results
+
+    Parameters:
+    - subject: Email subject line
+    - message: Email body content
+    - recipients: List of email addresses to send to
+    - only_to_you_on_failure: If True and 'failure' is in subject, only send to first recipient
+    """
+    sender_email = os.getenv("EMAIL_ADDRESS")  # Add this to your .env file
+    sender_password = os.getenv("EMAIL_PASSWORD")  # Add this to your .env file
+
+    # Check if this is a failure message and only_to_you_on_failure is True
+    if only_to_you_on_failure and "failure" in subject.lower():
+        recipients = [recipients[0]]  # Only send to your email (first in list)
+
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = ", ".join(recipients)
+    msg['Subject'] = subject
+
+    # Attach message body
+    msg.attach(MIMEText(message, 'plain'))
+
+    try:
+        # Gmail SMTP server and port
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()  # Enable TLS encryption
+
+        # Login with your Gmail credentials
+        server.login(sender_email, sender_password)
+
+        # Send email
+        server.sendmail(sender_email, recipients, msg.as_string())
+        server.quit()
+        print(f"✉️ Email notification sent to {', '.join(recipients)}")
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+
+# Email recipients
+your_email = "moniln@uci.edu"  # Replace with your email
+friend_email = "shubhij1@uci.edu"  # Replace with your friend's email
+recipients = [your_email, friend_email]
+
+# Summary and email notification
+if booked_slots_count > 0:
+    # Success message
+    success_message = f"✓ Pickleball Booking Completed!\n\n"
+    success_message += f"Successfully booked {booked_slots_count} slots:\n\n"
+
+    # Add details for each booked slot
+    for i, time_slot in enumerate(booked_times):
+        success_message += f"{i+1}. Time: {time_slot}\n"
+
+    print(success_message)
+
+    # Send success email to both you and your friend
+    send_email(
+        subject="Pickleball Court Booking Success",
+        message=success_message,
+        recipients=recipients
+    )
+else:
+    # Failure message
+    failure_message = "❌ No available slots found in any facility."
+    print(failure_message)
+
+    # Send failure email only to you
+    send_email(
+        subject="Pickleball Court Booking Failure",
+        message=failure_message,
+        recipients=recipients,
+        only_to_you_on_failure=True
+    )
+
+
+

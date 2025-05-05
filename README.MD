@@ -20,5 +20,22 @@ Create `.env` and update with your credentials:
 
 ```env
 UCI_ID=your_ucinetid
-PASSWORD=your_password
+UCI_PASSWORD=your_password
+```
+
+
+### Setting Up cron
+Using Crontab to run the script at 12:00 AM every day:
+To update:
+```
+crontab -l > ~/Desktop/my_crontab.txt
+```
+make changes
+```
+crontab ~/Desktop/my_crontab.txt
+```
+
+View crons
+```
+crontab -l
 ```
